@@ -1,0 +1,73 @@
+		IUCV HOW-TO
+		-----------
+
+This device driver provides the user with the ability to write applications that use
+the open/close/read/write/ioctl APIs to drive IUCV connections between users and CP
+system services.
+
+The driver will check for the presence of VM when loaded and will return -EACCES if
+it's not detected.
+
+The driver accepts a parameter "maxconn" at load time. This will define how many IUCV
+device nodes are to be created. The default is 1.
+
+Building Device Driver
+----------------------
+
+Issue the following command to build the driver module:
+
+ make -C /lib/modules/`uname -r`/build M=`pwd` SUBDIRS=`pwd` modules
+
+Building Tools
+---------------
+
+Issue the following command to build the commands like hcp:
+
+ make tools
+
+Prop Jr Command (propjr)
+------------------------
+The Prop Jr. application simply connects to the *MSG system service and listens for 
+incoming messages. It will display the message on the console as well as writing it 
+to syslog(). To run it use "make tools" to build the application, load the device 
+driver, and issue:
+
+echo "*MSG" >/sys/devices/iucv/iucv0/target_user
+
+sysfs Interaction
+-----------------
+The device driver creates several entries in the sysfs tree. Under the directory
+/sys/devices/iucv there will be directories for every IUCV defined by the hotplug
+agent. Under the directory will be files:
+
+File		Access	Value	  Purpose
+------------	------	-----	  --------------------------------
+local		r/w	[0 | 1]   Specifies whether only local connections are supported
+msglimit	r/w	0-255	  Specifies the message limit for the connection
+parmdata	r/w	[0 | 1]   Specifies whether parameter data is supported
+path		ro	Numeric	  Path ID of the connection
+priority	r/w	[0 | 1]	  Specifies whether priority messages are supported
+target_node	r/w	AlphaNum  Node name of IUCV destination (or blank)
+target_user	r/w	AlphaNum  The target name of the user or service
+
+An example of a typical interaction with these files is when an application wishes to
+connect to a specific user. Prior to the application starting an entry is written to
+target_user:
+
+echo "*MSG" >/sys/devices/iucv/iucv0/target_user
+
+The device driver will retrieve this information when the application opens the iucv
+device and use it to connect to or accept connections from the target.
+
+Files in this filesystem may only be written to by the superuser.
+
+IOCTL Options
+-------------
+There are several IOCTL operations that may be performed:
+- Set target class
+- Get target class
+- Set source class
+- Get source class
+- Set message tag
+- Get message tag
+- Set answer buffer size
