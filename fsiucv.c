@@ -1052,7 +1052,7 @@ fsiucv_receive(struct file * filp, char *buf, size_t count, loff_t * ppos)
             if (dev->inSize < bufSize) {
                 if (dev->inData)
                     kfree(dev->inData);
-                dev->inData = kmalloc(bufSize, GFP_KERNEL);
+                dev->inData = kmalloc(bufSize, GFP_KERNEL | GFP_DMA);
                 dev->inSize = bufSize;
             }
 
@@ -1205,7 +1205,7 @@ fsiucv_write(struct file * filp, const char *buf, size_t count, loff_t * ppos)
     if (dev->outSize < count) {
         if (dev->outData)
             kfree(dev->outData);
-        dev->outData = kmalloc(count, GFP_KERNEL);
+        dev->outData = kmalloc(count, GFP_KERNEL | GFP_DMA);
         dev->outSize = count;
     }
 
@@ -1213,7 +1213,7 @@ fsiucv_write(struct file * filp, const char *buf, size_t count, loff_t * ppos)
     if (copy_from_user(&dev->outData[filp->f_pos], buf, count) != 0)
         return(-EFAULT);
 
-    msg = kzalloc(sizeof(struct iucv_message), GFP_KERNEL);
+    msg = kzalloc(sizeof(struct iucv_message), GFP_KERNEL | GFP_DMA);
     msg->id = dev->msgid;
     msg->class = dev->trgcls;
 
@@ -1349,7 +1349,7 @@ fsiucv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     if (dev->answer != NULL)
                         kfree(dev->answer);
 
-                    dev->answer = kmalloc(dev->ansSize, GFP_KERNEL);
+                    dev->answer = kmalloc(dev->ansSize, GFP_KERNEL | GFP_DMA);
                     if (dev->answer == NULL) {
                         dev->ansSize = 0;
                         return -ENOMEM;
