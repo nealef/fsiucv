@@ -1,7 +1,22 @@
+/**
+ * @file riclient.c
+ * @summary Sample program for use with RISERVER 
+ * @description This simple program is the client half of the
+ * sample program that comes with REXXIUCV package that lives
+ * on the z/VM packages download page (http://www.vm.ibm.com/download).
+ * It simply sends the EBCDIC '5' to the server who then returns
+ * 5 lines of the RISERVER source file.
+ *
+ */
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 
+/*
+ * Rather than using the iconv() API which would be 
+ * more correct. We just use a couple of 256 byte 
+ * translate tables
+ */
 char E2ATBL[256] = {
 0x00, 0x01, 0x02, 0x03, 0xec, 0x09, 0xca, 0x1c,  // 00
 0xe2, 0xd2, 0xd3, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,  // 08
@@ -79,7 +94,8 @@ main(int argc, char **argv)
 	int i, j, k;
 	char res[256];
 	char out[256];
-	char data = '5';
+    int count = 5;
+	char data[4];
 
 	fd = open("/dev/iucv0",O_RDWR);
 	if (fd < 0) {
@@ -87,31 +103,45 @@ main(int argc, char **argv)
 		exit(fd);
 	}
     
-    j = sizeof(data);
+    j = snprintf(data, sizeof(data), "%d", count);
 
+    /*
+     * Translate the data to be sent from ASCII to EBCDIC
+     */ 
     __asm__ ("	bctr	%1,0\n"
-         "	exrl	%1,1f\n"
-         ".data\n"
-         "1:	tr	0(1,%0),%2\n"
-         ".text\n"
-         : : "r" (&data), "r" (j), "Q" (A2ETBL) : "memory", "cc"); 
+             "	exrl	%1,1f\n"
+             ".data\n"
+             "1:	tr	0(1,%0),%2\n"
+             ".text\n"
+             : : "r" (&data), "r" (j), "Q" (A2ETBL) : "memory", "cc"); 
 
-	if (write(fd, &data, 1) <= 0) {
+    /*
+     * Send the request to the server
+     */ 
+	if (write(fd, &data, j) <= 0) {
 		perror("write");
 		exit(2);
 	}
-	for (i = 0; i < 5; i++) {
+
+    /*
+     * We are expecting "data" lines back from the server
+     */ 
+	for (i = 0; i < count; i++) {
 		j = read(fd, res, sizeof(res));
 		if (j <= 0) {
 			perror("read");
 			exit(1);
 		}
+
+        /*
+         * Translate to ASCII
+         */ 
 		__asm__ ("	bctr	%1,0\n"
-			 "	exrl	%1,1f\n"
-			 ".data\n"
-			 "1:	tr	0(1,%0),%2\n"
-			 ".text\n"
-			 : : "r" (&res), "r" (j), "Q" (E2ATBL) : "memory", "cc"); 
+		    	 "	exrl	%1,1f\n"
+			     ".data\n"
+			     "1:	tr	0(1,%0),%2\n"
+			     ".text\n"
+			     : : "r" (&res), "r" (j), "Q" (E2ATBL) : "memory", "cc"); 
 		res[j] = 0;
 		printf("%s\n",res);
 	}
