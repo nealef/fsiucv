@@ -52,7 +52,7 @@ depmod -a
 
 %files
 %defattr(-,root,root)
-%doc propjr.c 
+%doc examples/propjr.c examples/riclient.sh examples/riclient.c
 %license LICENSE.TXT
 %attr(0750,root,root) /lib/modules/*/extra/fsiucv.ko
 %attr(0750,root,root) %{_bindir}/propjr
