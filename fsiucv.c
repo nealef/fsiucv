@@ -836,7 +836,7 @@ fsiucv_open(struct inode *inode, struct file *filp)
                  dev->prog[iField] != '\n'; iField++)
                 userData[iField] = dev->prog[iField];
 
-            printk(KERN_ERR "fsiucv - user: %s node: %s data: %s\n",dev->user,dev->node,dev->prog);
+            PDEBUG("fsiucv - user: %s node: %s data: %s\n",dev->user,dev->node,dev->prog);
             if (dev->priority)
                 flags1 |= IUCV_IPPRTY;
             if (dev->parmdata)
