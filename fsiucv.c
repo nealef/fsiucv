@@ -398,7 +398,7 @@ static struct file_operations fsiucv_fops = {
 
 MODULE_AUTHOR("Neale Ferguson <neale@sinenomine.net>");
 MODULE_DESCRIPTION("Linux on System z interface to IUCV."
-		   " Copyright 2005-2016 Neale Ferguson");
+		   " Copyright 2005-2019 Neale Ferguson");
 module_param(maxconn, int, S_IRUSR | S_IWUSR);
 MODULE_PARM_DESC(maxconn, "Maximum number of connections (1-255)");
 MODULE_LICENSE("GPL");
