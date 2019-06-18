@@ -853,6 +853,7 @@ fsiucv_open(struct inode *inode, struct file *filp)
                 printk(KERN_ERR
                        "fsiucv: unable to allocate path\n");
                 rc = 2;
+                err = -EACCES;
             } else {
                 dev->path->private = dev;
 
@@ -865,6 +866,7 @@ fsiucv_open(struct inode *inode, struct file *filp)
                            rc);
                     rc = mapIPRC[rc];
                     dev->flag &= ~FS_ACTIV;
+                    err = -EACCES;
                 }
             }
             break;
@@ -893,6 +895,7 @@ fsiucv_open(struct inode *inode, struct file *filp)
                        rc);
                 rc = mapIPRC[rc];
                 dev->flag &= ~FS_ACTIV;
+                err = -EACCES;
             }
             break;
 
@@ -1453,8 +1456,11 @@ static ssize_t
 prog_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
     FSIUCV_Dev *priv = (FSIUCV_Dev *) dev_get_drvdata(dev);
+    ssize_t lProg;
 
-    return (snprintf(buf, sizeof (priv->prog), "%s", priv->prog));
+    lProg = snprintf(buf, sizeof (priv->prog), "%s", priv->prog);
+    EBCASC(buf, lProg);
+    return (lProg);
 }
 
 /*===================== End of Function ====================*/
@@ -1481,6 +1487,7 @@ prog_set(struct device *dev, struct device_attribute *attr, const char *buf, siz
     if (!(priv->flag & FS_INUSE)) {
             lProg = MIN(count, sizeof (priv->prog) - 1);
             memcpy(priv->prog, buf, lProg);
+            ASCEBC(priv->prog, lProg);
             priv->prog[lProg] = 0;
             return (count);
     } else {
