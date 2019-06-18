@@ -79,13 +79,23 @@ main(int argc, char **argv)
 	int i, j, k;
 	char res[256];
 	char out[256];
-	char data = 0xf5;
+	char data = '5';
 
 	fd = open("/dev/iucv0",O_RDWR);
 	if (fd < 0) {
 		perror("open");
 		exit(fd);
 	}
+    
+    j = sizeof(data);
+
+    __asm__ ("	bctr	%1,0\n"
+         "	exrl	%1,1f\n"
+         ".data\n"
+         "1:	tr	0(1,%0),%2\n"
+         ".text\n"
+         : : "r" (&data), "r" (j), "Q" (A2ETBL) : "memory", "cc"); 
+
 	if (write(fd, &data, 1) <= 0) {
 		perror("write");
 		exit(2);
