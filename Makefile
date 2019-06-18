@@ -38,4 +38,4 @@ propjr: propjr.o
 	$(CC) -o $@ $^
 
 propjr.o: examples/propjr.c
-	$(CC) -O2 -o propjr.o -c examples/propjr.c
+	$(CC) -O2 -o propjr.o -I. -c examples/propjr.c
