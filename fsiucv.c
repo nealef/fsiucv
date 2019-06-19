@@ -60,7 +60,7 @@
  */
 
 #undef PDEBUG			/* undef it, just in case */
-#ifdef FSIUCV_DEBUG
+#if FSIUCV_DEBUG
 #  ifdef __KERNEL__
      /* This one if debugging is on, and kernel space */
 #    define PDEBUG(fmt, args...) printk( KERN_DEBUG "fsiucv: " fmt, ## args)

@@ -9,6 +9,7 @@
  *
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include "example.h"
@@ -52,8 +53,9 @@ main(int argc, char **argv)
 			exit(1);
 		}
 
-        e2e(res,j);
+        e2a(res,j);
 		res[j] = 0;
+        printf("%s\n",res);
 	}
 	close(fd);
 }
