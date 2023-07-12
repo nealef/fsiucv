@@ -120,7 +120,8 @@
 
 #include <net/iucv/iucv.h>
 
-#include <asm/segment.h>	/* memcpy and such */
+//#include <asm/segment.h>	/* memcpy and such */
+#include <linux/string.h>	/* memcpy and such */
 #include <asm/ebcdic.h>		/* ebcdic stuff */
 #include <asm/uaccess.h>	/* copy to/from user space */
 #include <asm/atomic.h>		/* atomic operations */
@@ -211,7 +212,7 @@ ssize_t fsiucv_readv(struct file *, const struct iovec *,
 ssize_t fsiucv_write(struct file *, const char *, size_t, loff_t *);
 ssize_t fsiucv_writev(struct file *, const struct iovec *,
 		      unsigned long, loff_t *);
-int fsiucv_ioctl(struct file *, unsigned int, unsigned long);
+long fsiucv_ioctl(struct file *, unsigned int, unsigned long);
 long fsiucv_compat_ioctl(struct file *, unsigned int, unsigned long);
 
 /*
@@ -280,13 +281,13 @@ extern FSIUCV_Dev *fsiucv_devices;
 /*
  * sysfs file attributes
  */
-DEVICE_ATTR(program_name, 0666, prog_show, prog_set);
-DEVICE_ATTR(target_user, 0666, user_show, user_set);
-DEVICE_ATTR(target_node, 0666, iucvnode_show, iucvnode_set);
-DEVICE_ATTR(priority, 0666, priority_show, priority_set);
-DEVICE_ATTR(parmdata, 0666, parmdata_show, parmdata_set);
-DEVICE_ATTR(msglimit, 0666, msglimit_show, msglimit_set);
-DEVICE_ATTR(local, 0666, lokal_show, lokal_set);
+DEVICE_ATTR(program_name, 0664, prog_show, prog_set);
+DEVICE_ATTR(target_user, 0664, user_show, user_set);
+DEVICE_ATTR(target_node, 0664, iucvnode_show, iucvnode_set);
+DEVICE_ATTR(priority, 0664, priority_show, priority_set);
+DEVICE_ATTR(parmdata, 0664, parmdata_show, parmdata_set);
+DEVICE_ATTR(msglimit, 0664, msglimit_show, msglimit_set);
+DEVICE_ATTR(local, 0664, lokal_show, lokal_set);
 DEVICE_ATTR(path, 0444, path_show, NULL);
 DEVICE_ATTR(status, 0444, status_show, NULL);
 
@@ -882,7 +883,7 @@ fsiucv_open(struct inode *inode, struct file *filp)
             rc = mapInt[atomic_read(dev->intType)];
             PDEBUG("%d got: %d %d\n", state, rc,
                    atomic_read(dev->intType));
-            atomic_clear_mask((CPEND | CCOMP), dev->intType);
+            atomic_andnot((CPEND | CCOMP), dev->intType);
             break;
 
         case O_ACCP:
@@ -1043,7 +1044,7 @@ fsiucv_receive(struct file * filp, char *buf, size_t count, loff_t * ppos)
             return(-EIO);
 
         if ((atomic_read(dev->intType) & MPEND) || dev->rcvq != NULL) {
-            atomic_clear_mask(MPEND, dev->intType);
+            atomic_andnot(MPEND, dev->intType);
             mpEIB = &dev->rcvq->msg;
             PDEBUG("eib=%p next=%p\n", dev->rcvq, dev->rcvq->next);
             dev->msglen = mpEIB->length;
@@ -1170,7 +1171,6 @@ fsiucv_readv(struct file * filp, const struct iovec * iov,
 	     unsigned long count, loff_t * ppos)
 {
     FSIUCV_Dev *dev = filp->private_data;
-    unsigned long f_pos = (unsigned long) (filp->f_pos);
 
     if (atomic_read(dev->intType) & CSVRD)
         return(-EIO);
@@ -1238,7 +1238,7 @@ fsiucv_write(struct file * filp, const char *buf, size_t count, loff_t * ppos)
         if (atomic_read(dev->intType) & CSVRD)
             count = -EIO;
 
-        atomic_clear_mask(MCOMP, dev->intType);
+        atomic_andnot(MCOMP, dev->intType);
     } else
         count = -EIO;
 
@@ -1289,7 +1289,7 @@ fsiucv_writev(struct file * filp, const struct iovec * iov,
 /*                                                          */
 /************************************************************/
 
-int
+long
 fsiucv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     FSIUCV_Dev *dev = filp->private_data;
@@ -1894,13 +1894,13 @@ fsiucv_callback_connreq(struct iucv_path *iucvPath, u8 vmId[8], u8 userd[16])
 	PDEBUG("connection pending\n");
 	for (iDev = 0; iDev < maxconn; iDev++, pDev++) {
 		if ((pDev->flag & FS_CWAIT) &&
-		    (memcmp(userd, pDev->prog, sizeof(userd)) == 0)) {
+		    (memcmp(userd, pDev->prog, sizeof(*userd)) == 0)) {
 			PDEBUG("connection is for us from %s\n",vmId);
 			pDev->path = iucvPath;
 			iucvPath->private = pDev;
 			memcpy(pDev->user, vmId, sizeof(pDev->user)-1);
 			pDev->flag &= ~FS_CWAIT;
-			atomic_set_mask(CPEND, pDev->intType);
+			atomic_or(CPEND, pDev->intType);
 			wake_up(&pDev->waitq);
 			return(0);
 		}
@@ -1928,7 +1928,7 @@ fsiucv_callback_connrej(struct iucv_path *iucvPath,  u8 userd[16])
 
 	PDEBUG("Path severed - %p\n",dev);
 	if (dev != NULL) {
-		atomic_set_mask(CSVRD, dev->intType);
+		atomic_or(CSVRD, dev->intType);
 		wake_up(&dev->waitq);
 	}
 }
@@ -1951,7 +1951,7 @@ fsiucv_callback_connsusp(struct iucv_path *iucvPath, u8 userd[16])
 {
 	FSIUCV_Dev *dev = iucvPath->private;
 
-	atomic_set_mask(CQSCD, dev->intType);
+	atomic_or(CQSCD, dev->intType);
 	wake_up(&dev->waitq);
 }
 
@@ -1973,7 +1973,7 @@ fsiucv_callback_connres(struct iucv_path *iucvPath, u8 userd[16])
 {
 	FSIUCV_Dev *dev = iucvPath->private;
 
-	atomic_set_mask(CRSMD, dev->intType);
+	atomic_or(CRSMD, dev->intType);
 	wake_up(&dev->waitq);
 }
 
@@ -2018,7 +2018,7 @@ fsiucv_callback_rx(struct iucv_path *iucvPath, struct iucv_message *msg)
 			memcpy(&last->msg, msg, sizeof (struct iucv_message));
 		}
 	}
-	atomic_set_mask(MPEND, dev->intType);
+	atomic_or(MPEND, dev->intType);
 	PDEBUG("mask=%08x\n", atomic_read(dev->intType));
 	wake_up(&dev->waitq);
 }
@@ -2043,7 +2043,7 @@ fsiucv_callback_connack(struct iucv_path *iucvPath, u8 userd[16])
 	FSIUCV_Dev *dev = iucvPath->private;
 
 	PDEBUG("connection complete\n");
-	atomic_set_mask(CCOMP, dev->intType);
+	atomic_or(CCOMP, dev->intType);
 	PDEBUG("mask=%08x\n", atomic_read(dev->intType));
 	wake_up(&dev->waitq);
 }
@@ -2069,7 +2069,7 @@ fsiucv_callback_txdone(struct iucv_path *iucvPath, struct iucv_message *msg)
 	PDEBUG("txdone\n");
 	PDEBUG(" ... dev - %p\n",dev);
         if (dev != NULL) {
-                atomic_set_mask(MCOMP, dev->intType);
+                atomic_or(MCOMP, dev->intType);
                 wake_up(&dev->waitq);
         }
 }

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
-#include <net/iucv/fsiucv.h>
+#include <fsiucv.h>
 #include "example.h"
 
 #define BUFLEN          1024
