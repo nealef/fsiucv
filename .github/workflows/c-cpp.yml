@@ -9,7 +9,7 @@ on:
 jobs:
   build:
 
-    runs-on: almalinux-9-s390x
+    runs-on: ubuntu-22.04-s390x
 
     steps:
     - uses: actions/checkout@v3
